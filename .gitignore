@@ -1,1 +1,4 @@
-dataset/t*
+dataset/
+utils/__pycache__
+.cache/
+resouces.zip
