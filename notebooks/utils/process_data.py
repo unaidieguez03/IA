@@ -15,7 +15,7 @@ def preprocess(path:str) -> np.ndarray:
         Returns None if any step in the preprocessing fails
     """
     image = load_image.load_dicom_image(path)
-    image = image_resizer.resize_image(image, 512)
+    image = image_resizer.resize_image(image, 256)
     image = image_grayscaler.grayscaler(image)
     image = image_normalization.normalize_image(image)
     return image
