@@ -5,12 +5,14 @@ description = "IA model to detect back malformations"
 readme = "README.md"
 requires-python = ">= 3.8"
 dependencies = [
-    "opencv-python",  # Para `cv2`
-    "numpy",          # Para `np`
-    "polars",         # Para `pl`
-    "pydicom",        # Para trabajar con imágenes médicas
-    "torch>=2.0.0",   # PyTorch y sus módulos
-    "torchvision",    # Si usas modelos preentrenados o utilidades
-    "tqdm",           # Para barras de progreso
-    "typing-extensions", # Para anotaciones de tipo (compatible con typing)
+    "optuna",
+    "pathlib",
+    "opencv-python",  
+    "numpy",          
+    "polars",         
+    "pydicom",        
+    "torch>=2.0.0",  
+    "torchvision",    
+    "tqdm",           
+    "typing-extensions", 
 ]

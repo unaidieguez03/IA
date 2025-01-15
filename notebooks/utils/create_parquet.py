@@ -32,11 +32,11 @@ def process_lazy_images(lf: pl.LazyFrame,total_rows:int =0, chunk_size: int = 10
     # Combine all chunks efficiently using Polars
     combined_lf = pl.scan_parquet([os.path.join(TEMPORAL_DIR,f"temp_chunk_{i}.parquet") for i in range(num_chunks)])
     
-    # Write final output
-    combined_lf = combined_lf.explode("lesion_type")
+    # # Write final output
+    # combined_lf = combined_lf.explode("lesion_type")
 
     combined_lf.sink_parquet(
-        os.path.join(output_path,"preprocesed_dataset.parquet"),
+        os.path.join(output_path,"p.parquet"),
         compression="snappy",
         compression_level=22,
     )
