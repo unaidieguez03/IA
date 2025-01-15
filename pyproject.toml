@@ -3,16 +3,15 @@ name = "backAnalyzer"
 version = "0.1.0"
 description = "IA model to detect back malformations"
 readme = "README.md"
-requires-python = ">= 3.8"
+requires-python = ">= 3.12, <3.13"
 dependencies = [
-    "optuna",
-    "pathlib",
-    "opencv-python",  
-    "numpy",          
-    "polars",         
-    "pydicom",        
-    "torch>=2.0.0",  
-    "torchvision",    
-    "tqdm",           
-    "typing-extensions", 
+    "optuna ==4.1.0",
+    "opencv-python  ==4.10.0",
+    "numpy          ==1.26.4",
+    "polars         ==1.19.0",
+    "pydicom        ==3.0.1,
+    "torch          ==2.5.1",
+    "torchvision    ==0.20.1",
+    "tqdm           ==4.66.5",
+    "typing-extensions"
 ]
