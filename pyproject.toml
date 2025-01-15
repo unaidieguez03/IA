@@ -18,5 +18,6 @@ dependencies = [
     "torch              ==2.5.1",
     "torchvision        ==0.20.1",
     "tqdm               ==4.66.5",
-    "typing-extensions  ==4.12.2"
+    "typing-extensions  ==4.12.2",
+    "matplotlib         >=3.9.0"
 ]
