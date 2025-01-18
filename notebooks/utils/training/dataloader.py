@@ -9,23 +9,16 @@ class LazyFrameDataset(Dataset):
     
     def __len__(self):
         return self.length
-    def _prepare_labels(self, labels):
+    def _prepare_labels(self, label):
         condition_to_idx = {
-            'Spondylolysthesis': 0,
-            'No finding': 1,
-            'Surgical implant': 2,
-            'Other lesions': 3,
-            'Vertebral collapse': 4,
-            'Foraminal stenosis': 5,
-            'Osteophytes': 6,
-            'Disc space narrowing': 7
+            'Osteophytes': 0,
+            'No finding': 1
         }
         
         combined_labels = torch.zeros(len(condition_to_idx))
         
-        for condition in labels:
-            idx = condition_to_idx[condition]
-            combined_labels[idx] = 1.0
+        idx = condition_to_idx[label]
+        combined_labels[idx] = 1.0
         return combined_labels.float()
     def __getitem__(self, idx):
             row = (
@@ -36,6 +29,6 @@ class LazyFrameDataset(Dataset):
             )
             image = torch.tensor(row[1], dtype=torch.float32)
             image = image.unsqueeze(0)
-
+            print(row[0])
             labels = self._prepare_labels(row[0])
             return {"image":image, "label":labels}

@@ -2,7 +2,7 @@ import os
 import polars as pl
 from tqdm.notebook import tqdm
 
-def process_lazy_images(lf: pl.LazyFrame,total_rows:int =0, chunk_size: int = 10000, output_path: str = "output.parquet"):
+def process_lazy_images(lf: pl.LazyFrame,total_rows:int =0, chunk_size: int = 10000, output_path: str = "output.parquet", name:str="preprocesed_dataset.parquet"):
 
     num_chunks = (total_rows + chunk_size - 1) // chunk_size
 
@@ -20,7 +20,7 @@ def process_lazy_images(lf: pl.LazyFrame,total_rows:int =0, chunk_size: int = 10
     combined_lf = pl.scan_parquet([os.path.join(TEMPORAL_DIR,f"temp_chunk_{i}.parquet") for i in range(num_chunks)])
 
     combined_lf.sink_parquet(
-        os.path.join(output_path,"preprocesed_dataset.parquet"),
+        os.path.join(output_path, name),
         compression="snappy",
         compression_level=22,
     )
