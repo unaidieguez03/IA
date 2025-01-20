@@ -85,7 +85,7 @@ class ModelCheckpointer:
 
         if not self._is_better(metric_value, self._best_metric):
             return
-        
+        print("Best model save!")
         self._best_metric = metric_value
         checkpoint = {
             "model_state": model.eval().state_dict(),
@@ -126,6 +126,13 @@ class ModelCheckpointer:
         AssertionError
             If no checkpoint exists at the specified path.
         """
+        if torch.cuda.is_available():
+            device = torch.device('cuda:0')
+            print('Running on the GPU')
+            torch.cuda.empty_cache()
+        else:
+            device = torch.device('cpu')
+            print('Running on the CPU')
         assert Path.exists(checkpoint_path), "No checkpoint found"
-        checkpoint = torch.load(checkpoint_path, weights_only=False)
+        checkpoint = torch.load(checkpoint_path, weights_only=False, map_location=device)
         return checkpoint
