@@ -16,7 +16,6 @@ from optuna import Study, Trial
 import optuna.pruners as pruners
 import optuna.samplers as samplers
 import optuna.storages as storages
-from utils.training import autoencoder_trainer
 from pathlib import Path
 
 
@@ -44,6 +43,8 @@ DATASET_DIR = WORKDIR_PATH + "dataset/"
 ANOTTATIONS_DIR = DATASET_DIR + "annotations/"
 TRAIN_DIR = os.path.join(DATASET_DIR, "train_images/")
 LOAD_SESSION = False
+REDUCTION_PERCENTAGE = 0.2
+AUGMENTATION_PERCENTAGE = 0.5
 RESOURCES = "resources/"
 
 # %% [markdown]
@@ -66,6 +67,8 @@ else:
     lazy_dataset = pl.scan_csv(ANOTTATIONS_DIR + 'train.csv')
     # lazy_dataset = pl.scan_csv(ANOTTATIONS_DIR + 'p.csv')
     LENGTH = lazy_dataset.select(pl.len()).collect().item()
+LENGTH = lazy_dataset.select(pl.len()).collect().item()
+print(LENGTH)
 
 # %%
 if NO_CACHE:
@@ -83,73 +86,284 @@ if NO_CACHE:
         .select(['image_id', 'lesion_type'])
     )
 
+# %%
+import matplotlib.pyplot as plt
+if NO_CACHE:
+    label_counts_pd = (
+            lazy_dataset.
+            group_by('lesion_type').agg(
+        pl.count('image_id').alias('count')
+        )
+    )
+    # Convert to pandas for easier plotting
+    label_counts = label_counts_pd.collect()
+    # Extract data for plotting
+    labels = label_counts['lesion_type'].to_list()
+    counts = label_counts['count'].to_list()
+
+    # Plot using Matplotlib
+    plt.figure(figsize=(10, 6))
+    plt.bar(labels, counts, color='skyblue')
+    plt.xlabel('Lesions')
+    plt.ylabel('Count')
+    plt.title('Distribution of Lesions in the Dataset')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
 # %% [markdown]
-# ### 2.4 Agrup by lesion type for label classification
+# as we can see, the dataset is too invalanced. Our aprouch in this case is going to be the next one:
+#     1. Take the No finding and Osteophytes classes, they are the 2 most common classes
+#     2. Filter for duplicate values inside those two classes. Doing this we are only taking the images that have Osteophytes OR No finding
+#     3. See if the data is invalanced
+#     3. When we have the same amount of data for each values
 
 # %%
 if NO_CACHE:
-    lazy_dataset = (
-        lazy_dataset.group_by("image_id").agg(
+    for lesions in lesionTypes:
+        if lesions == "No finding":
+            lazy_frame_to_augment = ((
+                lazy_dataset
+                .filter((pl.col("lesion_type") == lesions))
+            ))
+    for lesions in lesionTypes:
+        if lesions == "Osteophytes":
+            lazy_frame_to_maintein = ((
+                lazy_dataset
+                .filter((pl.col("lesion_type") == lesions))
+            ))
+
+# %%
+if NO_CACHE:
+    print(lazy_frame_to_augment.select(pl.len()).collect().item())
+    print(lazy_frame_to_maintein.select(pl.len()).collect().item())
+    visualice.visualice_lazyframe(lazy_frame_to_augment)
+
+
+# %%
+if NO_CACHE:
+    label_counts_pd = (
+            pl.concat([lazy_frame_to_augment, lazy_frame_to_maintein]).
+            group_by('lesion_type').agg(
+        pl.count('image_id').alias('count')
+        )
+    )
+    # Convert to pandas for easier plotting
+    label_counts = label_counts_pd.collect()
+    # Extract data for plotting
+    labels = label_counts['lesion_type'].to_list()
+    counts = label_counts['count'].to_list()
+
+    # Plot using Matplotlib
+    plt.figure(figsize=(10, 6))
+    plt.bar(labels, counts, color='skyblue')
+    plt.xlabel('Lesions')
+    plt.ylabel('Count')
+    plt.title('Distribution of Lesions in the Dataset')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+# %%
+if NO_CACHE:
+    lazy_frame_to_augment = (
+        lazy_frame_to_augment.group_by("image_id").agg(
         pl.col("lesion_type"))
     )
-    LENGTH = lazy_dataset.select(pl.len()).collect().item()
-
-# %% [markdown]
-# ### 2.5 Get image path and add to the dataset
+    lazy_frame_to_maintein = (
+        lazy_frame_to_maintein.group_by("image_id").agg(
+        pl.col("lesion_type"))
+    )
+    print(lazy_frame_to_maintein.select(pl.len()).collect().item())
+    print(lazy_frame_to_augment.select(pl.len()).collect().item())
 
 # %%
 if NO_CACHE:
-    lazy_dataset = (
-        lazy_dataset
+    lazy_frame_to_augment = (
+        lazy_frame_to_augment
+        .with_columns((pl.lit(TRAIN_DIR) + (pl.col("image_id")+pl.lit('.dicom'))).alias("image_path"))
+        .drop('image_id')
+    )
+    lazy_frame_to_maintein = (
+        lazy_frame_to_maintein
         .with_columns((pl.lit(TRAIN_DIR) + (pl.col("image_id")+pl.lit('.dicom'))).alias("image_path"))
         .drop('image_id')
     )
 
-# %%
-if NO_CACHE:
-    lazy_dataset = (lazy_dataset
-        .with_columns([
-            pl.col('lesion_type')
-            .list.unique()  # Remove duplicates within each list
-            .alias('lesion_labels')
-        ]).drop("lesion_type"))
-visualice.visualice_lazyframe(lazy_dataset)
-
 # %% [markdown]
-# ### 2.6 Preprocess the data
+# ## 2. Data Aumentation
 
 # %%
 if NO_CACHE:
-    lazy_dataset = (
-        lazy_dataset
-        .with_columns(
-            pl.col("image_path")
-            .map_elements(
-                function=process_data.preprocess,
-                return_dtype=pl.List(pl.List(pl.Float32))
-                )
-            .alias("image")
-        )
-        .drop("image_path")
+    lazy_frame_to_maintein = (lazy_frame_to_maintein
+            .with_columns([
+                pl.col('lesion_type')
+                .list.unique()  # Remove duplicates within each list
+                .alias('lesion_labels')
+            ]).drop("lesion_type"))
+    lazy_frame_to_augment = (lazy_frame_to_augment
+            .with_columns([
+                pl.col('lesion_type')
+                .list.unique()  # Remove duplicates within each list
+                .alias('lesion_labels')
+            ]).drop("lesion_type"))
+    visualice.visualice_lazyframe(lazy_frame_to_maintein)
+
+# %%
+if NO_CACHE:
+    lazy_frame_to_maintein = (
+        lazy_frame_to_maintein.with_columns(
+            pl.format("{}",
+            pl.col("lesion_labels").cast(pl.List(pl.String)).list.join("").alias("lesion"))
+        ).drop("lesion_labels")
     )
-visualice.visualice_lazyframe(lazy_dataset)
-
-# %% [markdown]
-# ### 2.7 Save the preprocessed dataset
+    lazy_frame_to_augment = (
+        lazy_frame_to_augment.with_columns(
+            pl.format("{}",
+            pl.col("lesion_labels").cast(pl.List(pl.String)).list.join("").alias("lesion"))
+        ).drop("lesion_labels")
+    )
 
 # %%
-from utils import create_parquet
+if NO_CACHE:
+    label_counts_pd = (
+            pl.concat([lazy_frame_to_augment, lazy_frame_to_maintein]).
+            group_by('lesion').agg(
+        pl.count('image_path').alias('count')
+        )
+    )
+    # Convert to pandas for easier plotting
+    label_counts = label_counts_pd.collect()
+    # Extract data for plotting
+    labels = label_counts['lesion'].to_list()
+    counts = label_counts['count'].to_list()
+
+    # Plot using Matplotlib
+    plt.figure(figsize=(10, 6))
+    plt.bar(labels, counts, color='skyblue')
+    plt.xlabel('Lesions')
+    plt.ylabel('Count')
+    plt.title('Distribution of Lesions in the Dataset')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+# %% [markdown]
+# after removing duplicates, we can see that the dataset is more balanced than before
+
+# %%
+if NO_CACHE:
+    lazy_dataset = pl.concat([lazy_frame_to_augment, lazy_frame_to_maintein])
+
+# %% [markdown]
+# ### AUMENTATION
+
+# %%
+if NO_CACHE:
+    lazy_frames_aumented =[]
+    lenth = int(lazy_dataset.select(pl.len()).collect().item()*AUGMENTATION_PERCENTAGE)
+    lazy_frames_aumented.append(lazy_dataset)
+    lazy_frames_aumented.append(
+                    lazy_dataset.select(
+                        pl.all().sample(n=lenth, shuffle=True)
+                    )
+            )
+
+# %%
+if NO_CACHE:
+    NORMAL_LENGTH = lazy_frames_aumented[0].select(pl.len()).collect().item()
+    AUGMENTED_LENGTH = lazy_frames_aumented[1].select(pl.len()).collect().item()
+    print(f"Dataset: {NORMAL_LENGTH}")
+    print(f"Augmented Dataset: {AUGMENTED_LENGTH}")
+
+# %%
+if NO_CACHE:
+    label_counts_pd = (
+            pl.concat(lazy_frames_aumented).
+            group_by('lesion').agg(
+        pl.count('image_path').alias('count')
+        )
+    )
+    # Convert to pandas for easier plotting
+    label_counts = label_counts_pd.collect()
+    # Extract data for plotting
+    labels = label_counts['lesion'].to_list()
+    counts = label_counts['count'].to_list()
+
+    # Plot using Matplotlib
+    plt.figure(figsize=(10, 6))
+    plt.bar(labels, counts, color='skyblue')
+    plt.xlabel('Lesions')
+    plt.ylabel('Count')
+    plt.title('Distribution of Lesions in the Dataset')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+
+# %%
+from utils import load_image, create_parquet
 
 if NO_CACHE:
-    create_parquet.process_lazy_images(lazy_dataset,total_rows=LENGTH, chunk_size=50, output_path=CACHE_DIR)
+    lazy_frames_aumented[0] = (lazy_frames_aumented[0]
+                    .with_columns(
+                        pl.col("image_path")
+                        .map_elements(
+                            function=process_data.preprocess,
+                            return_dtype=pl.List(pl.List(pl.Float32))
+                            )
+                        .alias("loaded_image")
+                    )
+                    .drop("image_path")
+            )
+    lazy_frames_aumented[1] = (lazy_frames_aumented[1]
+                    .with_columns(
+                        pl.col("image_path")
+                        .map_elements(
+                            function=process_data.preprocess_and_augment,
+                            return_dtype=pl.List(pl.List(pl.Float32))
+                            )
+                        .alias("loaded_image")
+                    )
+                    .drop("image_path")
+            )
+
+# %%
+if NO_CACHE:
+    create_parquet.process_lazy_images(lazy_frames_aumented[0],total_rows=NORMAL_LENGTH, chunk_size=50, output_path=CACHE_DIR, name="data.parquet")
+
+# %%
+if NO_CACHE:
+    create_parquet.process_lazy_images(lazy_frames_aumented[1],total_rows=AUGMENTED_LENGTH, chunk_size=50, output_path=CACHE_DIR, name="augmented.parquet")
+
+# %%
+if NO_CACHE:
+    combined_lf = pl.scan_parquet([os.path.join(CACHE_DIR,f"data.parquet"), os.path.join(CACHE_DIR,f"augmented.parquet")])
+
+    combined_lf.sink_parquet(
+        os.path.join(CACHE_DIR, "preprocesed_dataset.parquet"),
+        compression="snappy",
+        compression_level=22,
+    )
+
+# %%
+if NO_CACHE:
+    os.remove(os.path.join(CACHE_DIR,f"data.parquet"))
+    os.remove(os.path.join(CACHE_DIR,f"augmented.parquet"))
+    lazy_dataset = pl.scan_parquet([os.path.join(CACHE_DIR,f"preprocesed_dataset.parquet")])
+
+
+# %%
+LENGTH = lazy_dataset.select(pl.len()).collect().item()
+print(lazy_dataset.select(pl.len()).collect().item())
+visualice.visualice_lazyframe(lazy_dataset)
+
+# %%
+lesionTypes = lazy_dataset.select(["lesion"]).collect().unique().to_series().to_list()
+num_class = len(lesionTypes)
+print(lesionTypes)
 
 # %% [markdown]
 # ### 2.8 Split the dataset
-
-# %%
-from utils.training import autoencoder_trainer, dataloader
-
-train_dataset, validation_dataset = torch.utils.data.random_split(dataloader.LazyFrameDataset(lazy_frame=lazy_dataset, dataset_length=LENGTH), [0.8, 0.2])
 
 # %% [markdown]
 # ## 3 AUTOENCODER
@@ -278,29 +492,25 @@ class Autoencoder(nn.Module):
 
 # %%
 class Classifier(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, encoder):
         super().__init__()
-        # Global Average Pooling to reduce spatial dimensions (64x64 -> 1x1)
+        self.encoder = encoder
+        self.encoder.to(device)
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
-            # Classification head
-            # Input will be 512 (from encoder's 512 channels)
+        
+        # Define classifier with explicit num_classes output
         self.classifier = nn.Sequential(
-            nn.Flatten(),  # Flatten the 512x1x1 to 512
+            nn.Flatten(),  # Will flatten 512x1x1 to 512
             nn.Linear(512, 256),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(256, num_classes)
+            nn.Linear(256, num_classes)  # This should now correctly output num_classes
         )
-
-    def forward(self, x, encoder):
-        # Get encoded representation (shape: [batch, 512, 64, 64])
-        encoder_output = encoder(x)
+        
+    def forward(self, x):
+        encoder_output = self.encoder(x)
         encoded_features = encoder_output['encoded_image']
-        
-        # Global average pooling (shape: [batch, 512, 1, 1])
         pooled_features = self.global_pool(encoded_features)
-        
-        # Get classification logits
         logits = self.classifier(pooled_features)
         return logits
 
@@ -311,6 +521,7 @@ class Classifier(nn.Module):
 # #### 4.1 Hyperparameter Tuner
 
 # %%
+from utils.training import trainerClass, dataloader
 @dataclass
 class HyperparameterTuner:
     gc_after_trial: bool
@@ -328,17 +539,17 @@ class HyperparameterTuner:
     
     compute_device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     def objective(self, trial: Trial) -> float:
+        encoder = Encoder()
+        trainer = trainerClass.Trainer(autoencoder=Autoencoder(encoder, Decoder()), classifier=Classifier(num_class, encoder),training_set=dataloader.LazyFrameDataset(lazy_frame=lazy_dataset, dataset_length=LENGTH), batch_size=3, device=device, patience=7, n_folds=3)
+        trainer.train(trial=trial, num_epochs=self.train_epochs)
 
-        model = autoencoder_trainer.Trainer(autoencoder=Autoencoder(Encoder(), Decoder()), classifier=Classifier(num_class),training_set=train_dataset, batch_size=32, device=device)
-        model.train(trial=trial, num_epochs=self.train_epochs)
-
-        trial.set_user_attr("checkpoint_path", str(config.checkpoint_save_path))
+        trial.set_user_attr("checkpoint_path", "checkpoint/trial_checkpoint.pt")
 
         # Free resources
-        model.free()
+        trainer.free()
 
         # Get the best loss achieved
-        best_loss = min(loss_dict["total_loss"] for loss_dict in model.loss_history)
+        best_loss = min(loss_dict["val"]["fnr"] for loss_dict in trainer.loss_history)
 
         return best_loss
     def tune(self) -> Study:
@@ -391,10 +602,10 @@ class HyperparameterTuner:
 tuner = HyperparameterTuner(
     gc_after_trial=True,
     n_jobs=1,
-    n_trials=100,
+    n_trials=50,
     timeout=None,
     tuning_direction="minimize",
-    train_epochs=50,
+    train_epochs=40,
     show_progress_bar=True,
     study_load_if_exists=True,
     study_name="backAnalizer",
@@ -404,6 +615,35 @@ tuner = HyperparameterTuner(
 )
 
 study = tuner.tune()
+
+# %%
+print(
+    f"Best Trial: Trial {study.best_trial.number}\n"
+    f"\tLoss Value: {study.best_trial.value}\n"
+)
+
+# %%
+from utils.training.checkpoint import ModelCheckpointer
+from pathlib import Path
+
+checkpoint = (
+    ModelCheckpointer
+        .load_best_checkpoint(
+            Path(
+               "checkpoint/trial_checkpoint.pt"
+            )
+        )
+)
+
+# %%
+print(checkpoint)
+
+
+# %%
+modelo1 = Classifier(num_classes=2, encoder=Encoder())
+
+modelo1.load_state_dict(checkpoint["model_state"])
+print(modelo1)
 
 # %% [markdown]
 # ## 5 CLASSIOFICATION 
