@@ -127,10 +127,11 @@ class Trainer():
     def __init__(self, 
                  autoencoder, 
                  classifier, 
+                 patience,
                  training_set: LazyFrameDataset,
                  batch_size: int, 
                  device,
-                 n_folds=5):
+                 n_folds=3):
         self.autoencoder = autoencoder
         self.classifier = classifier
         self.device = device
@@ -139,7 +140,7 @@ class Trainer():
         self.n_folds = n_folds
         
         self.checkpointer = ModelCheckpointer(save_path=Path("checkpoint/trial_checkpoint.pt"))
-        self.early_stopping = EarlyStopping(patience=5, min_delta=10, maximize_metric=True)
+        self.early_stopping = EarlyStopping(patience=patience, min_delta=10, maximize_metric=True)
         self.optimizer = optim.AdamW(self.autoencoder.parameters(), lr=1e-3)
         self.criterion1 = nn.MSELoss()
         self.criterion2 = nn.BCEWithLogitsLoss()
@@ -156,6 +157,7 @@ class Trainer():
         # Report FNR as the primary metric
         trial.report(metrics['fnr'], epoch)
         if trial.should_prune():
+            print(f'prune')
             self.checkpointer.discard_checkpoint()
             raise optuna.TrialPruned()
 
@@ -175,8 +177,8 @@ class Trainer():
             
             reconstructed = self.autoencoder(batch)
             reconstruction_loss = self.criterion1(reconstructed["recontruction"], batch)
-            
-            prediction = self.classifier(batch, self.autoencoder.encoder)
+            # print(label, reconstruction_loss.item(), batch)
+            prediction = self.classifier(batch)
             classification_loss = self.criterion2(prediction, label)
             fnr = self.calculate_fnr(prediction, label)
             
@@ -189,6 +191,7 @@ class Trainer():
             train_losses['reconstruction'] += reconstruction_loss.item()
             train_losses['classification'] += classification_loss.item()
             train_losses['fnr'] += fnr
+            # print(train_losses)
         
         # Validation phase
         self.autoencoder.eval()
@@ -201,10 +204,11 @@ class Trainer():
                 reconstructed = self.autoencoder(batch)
                 reconstruction_loss = self.criterion1(reconstructed["recontruction"], batch)
                 
-                prediction = self.classifier(batch, self.autoencoder.encoder)
+                prediction = self.classifier(batch)
+                # print("3.1", label.shape)
                 classification_loss = self.criterion2(prediction, label)
                 fnr = self.calculate_fnr(prediction, label)
-                
+
                 total_loss = reconstruction_loss + classification_loss
                 
                 val_losses['total'] += total_loss.item()
@@ -244,6 +248,7 @@ class Trainer():
                 batch_size=self.batch_size,
                 sampler=val_sampler
             )
+            # print(len(train_loader), len(val_loader))
             
             for epoch in range(num_epochs):
                 metrics = self._train_fold(train_loader, val_loader)
@@ -262,16 +267,16 @@ class Trainer():
                         'fold': fold,
                         'epoch': epoch
                     }
-                    self.checkpointer.save_checkpoint(
-                        metric_value=best_fnr,
-                        model=self.autoencoder,
-                        message=f"Model saved. New best FNR: {best_fnr} at fold {fold + 1}, epoch {epoch + 1}",
-                    )
+                self.checkpointer.save_checkpoint(
+                    metric_value=metrics['val']['fnr'],
+                    model=self.classifier,
+                    message=f"Model saved. New best FNR: {best_fnr} at fold {fold + 1}, epoch {epoch + 1}",
+                )
                 
                 if self.early_stopping(metrics['val']['fnr']):
                     print(f'Early stopping triggered at epoch {epoch+1}, fold {fold+1}')
                     break
-                
+                print(metrics)
                 self.loss_history.append(metrics)
         
         # Load best model state

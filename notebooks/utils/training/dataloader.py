@@ -29,6 +29,6 @@ class LazyFrameDataset(Dataset):
             )
             image = torch.tensor(row[1], dtype=torch.float32)
             image = image.unsqueeze(0)
-            print(row[0])
+            # print(row[0])
             labels = self._prepare_labels(row[0])
             return {"image":image, "label":labels}
