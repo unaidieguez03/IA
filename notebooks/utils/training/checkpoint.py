@@ -88,6 +88,7 @@ class ModelCheckpointer:
         print("Best model save!")
         self._best_metric = metric_value
         checkpoint = {
+            "best_loss":metric_value,
             "model_state": model.eval().state_dict(),
         }
         torch.save(checkpoint, self._best_checkpoint_path)
