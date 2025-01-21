@@ -5,7 +5,7 @@ from .early_stoping import EarlyStopping
 from .dataloader import LazyFrameDataset
 from .checkpoint import ModelCheckpointer
 from torch.utils.data import DataLoader
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 import optuna
 from optuna import Trial
 from pathlib import Path
@@ -118,7 +118,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from sklearn.model_selection import KFold
 import numpy as np
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 import optuna
 from optuna import Trial
 from pathlib import Path

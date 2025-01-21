@@ -19,5 +19,6 @@ dependencies = [
     "tqdm               ==4.66.5",
     "typing-extensions  ==4.12.2",
     "matplotlib         >=3.9.0",
-    "scikit-learn       ==1.5.1"
+    "scikit-learn       ==1.5.1",
+    "ipywidgets         ==8.1.2"
 ]
