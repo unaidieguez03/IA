@@ -3,7 +3,7 @@ from .dataloader import LazyFrameDataset
 from .checkpoint import ModelCheckpointer
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from sklearn.model_selection import KFold
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,13 +12,11 @@ import optuna
 from optuna import Trial
 from pathlib import Path
 
-
 class Trainer():
     def __init__(self, 
                  autoencoder, 
                  classifier, 
                  patience,
-                 checkpointer,
                  training_set: LazyFrameDataset,
                  batch_size: int, 
                  device,
@@ -30,7 +28,7 @@ class Trainer():
         self.batch_size = batch_size
         self.n_folds = n_folds
         
-        self.checkpointer = checkpointer
+        self.checkpointer = ModelCheckpointer(save_path=Path("checkpoint/trial_checkpoint.pt"))
         self.early_stopping = EarlyStopping(patience=patience, min_delta=10, maximize_metric=True)
         self.optimizer = optim.AdamW(self.autoencoder.parameters(), lr=1e-3)
         self.criterion1 = nn.MSELoss()
@@ -49,6 +47,7 @@ class Trainer():
         trial.report(metrics['fnr'], epoch)
         if trial.should_prune():
             print(f'prune')
+            self.checkpointer.discard_checkpoint()
             raise optuna.TrialPruned()
 
     def _train_fold(self, train_loader, val_loader) -> dict:
@@ -95,6 +94,7 @@ class Trainer():
                 reconstruction_loss = self.criterion1(reconstructed["recontruction"], batch)
                 
                 prediction = self.classifier(batch)
+                # print("3.1", label.shape)
                 classification_loss = self.criterion2(prediction, label)
                 fnr = self.calculate_fnr(prediction, label)
 
@@ -120,9 +120,9 @@ class Trainer():
         
         best_fnr = float('inf')
         try:
-            best_state = self.checkpointer.load_best_checkpoint(Path)["best_loss"]
+            best_fnr = self.checkpointer.load_best_checkpoint(self.checkpointer._best_checkpoint_path)["best_loss"]
         except AssertionError as e:
-            best_state = None  # or some default value
+            print("NO CHECKPOint")
         
         for fold, (train_idx, val_idx) in enumerate(kfold.split(self.training_set)):
             print(f'\nFold {fold + 1}/{self.n_folds}')
@@ -158,12 +158,11 @@ class Trainer():
                         'fold': fold,
                         'epoch': epoch
                     }
-                
-                self.checkpointer.save_checkpoint(
-                    metric_value=best_fnr,
-                    model=best_state["classifier"],
-                    message=f"Model saved. New best FNR: {best_fnr} at fold {fold + 1}, epoch {epoch + 1}",
-                )
+                    self.checkpointer.save_checkpoint(
+                        metric_value=metrics['train']['fnr'],
+                        model=self.classifier,
+                        message=f"Model saved. New best FNR: {best_fnr} at fold {fold + 1}, epoch {epoch + 1}",
+                    )
                 
                 if self.early_stopping(metrics['train']['fnr']):
                     print(f'Early stopping triggered at epoch {epoch+1}, fold {fold+1}')
