@@ -5,7 +5,7 @@ from io import BytesIO
 import base64
 import os
 from models import Data
-from model import ClassificationModel
+from ..model.model import ClassificationModel
 
 
 model = ClassificationModel("../../notebooks/checkpoint/trial_checkpoint.pt")
