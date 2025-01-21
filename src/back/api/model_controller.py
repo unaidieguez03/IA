@@ -23,15 +23,9 @@ async def predict(uploaded_img) -> Response:
         # RequestData.disease = "Osteoporosis o como se diga"
 
 
-        # Decode the Base64 image
-        decoded_image = base64.b64decode(image_base64)
-        image = Image.open(io.BytesIO(decoded_image))
-        image_array = np.array(image)
-
-
         # RequestData.disease = "lorem" #get_prediction(output_tensor)[0]
         app.state.diagnosis_data.id = patient_id
-        raw_img = cv2.imdecode(np.frombuffer(await uploaded_img.read(), np.uint8), cv2.IMREAD_COLOR)
+        raw_img = cv2.imdecode(image_base64, cv2.IMREAD_COLOR)
         predicted,_ =  model.classify(raw_img)
         app.state.diagnosis_data.disease = predicted
         app.state.image = image_base64
