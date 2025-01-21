@@ -1,6 +1,6 @@
 import os
 import polars as pl
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 def process_lazy_images(lf: pl.LazyFrame,total_rows:int =0, chunk_size: int = 10000, output_path: str = "output.parquet", name:str="preprocesed_dataset.parquet"):
 
