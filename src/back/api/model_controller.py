@@ -3,7 +3,6 @@ import cv2
 from pydantic import BaseModel
 from fastapi import FastAPI, File, Response, UploadFile
 import numpy as np
-from models import RequestData
 from back.model.model import ClassificationModel
 import base64
 
@@ -11,7 +10,7 @@ _app = FastAPI(root_path="/python")
 model = ClassificationModel("notebooks/checkpoint/best_model.pt")
 
 @_app.post("/send")
-async def predict(uploaded_img:RequestData) -> Response:
+async def predict(uploaded_img) -> Response:
     try:
 # Parse JSON body
         body = await request.json()
