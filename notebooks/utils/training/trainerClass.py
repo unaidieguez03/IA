@@ -257,10 +257,10 @@ class Trainer():
                 print(f'Train - Total Loss: {metrics["train"]["total"]:.4f}, FNR: {metrics["train"]["fnr"]:.4f}')
                 print(f'Val - Total Loss: {metrics["val"]["total"]:.4f}, FNR: {metrics["val"]["fnr"]:.4f}')
                 
-                self._signal_tuner(trial, metrics['val'], epoch)
+                self._signal_tuner(trial, metrics['train'], epoch)
                 
-                if metrics['val']['fnr'] < best_fnr:
-                    best_fnr = metrics['val']['fnr']
+                if metrics['train']['fnr'] < best_fnr:
+                    best_fnr = metrics['train']['fnr']
                     best_state = {
                         'autoencoder': self.autoencoder.state_dict(),
                         'classifier': self.classifier.state_dict(),
@@ -268,12 +268,12 @@ class Trainer():
                         'epoch': epoch
                     }
                 self.checkpointer.save_checkpoint(
-                    metric_value=metrics['val']['fnr'],
+                    metric_value=metrics['train']['fnr'],
                     model=self.classifier,
                     message=f"Model saved. New best FNR: {best_fnr} at fold {fold + 1}, epoch {epoch + 1}",
                 )
                 
-                if self.early_stopping(metrics['val']['fnr']):
+                if self.early_stopping(metrics['train']['fnr']):
                     print(f'Early stopping triggered at epoch {epoch+1}, fold {fold+1}')
                     break
                 print(metrics)
