@@ -630,7 +630,9 @@ checkpoint = (
     ModelCheckpointer
         .load_best_checkpoint(
             Path(
-               "checkpoint/trial_checkpoint.pt"
+               study
+                    .best_trial
+                    .user_attrs["checkpoint_path"]
             )
         )
 )
@@ -638,14 +640,5 @@ checkpoint = (
 # %%
 print(checkpoint)
 
-
-# %%
-modelo1 = Classifier(num_classes=2, encoder=Encoder())
-
-modelo1.load_state_dict(checkpoint["model_state"])
-print(modelo1)
-
-# %% [markdown]
-# ## 5 CLASSIOFICATION 
 
 

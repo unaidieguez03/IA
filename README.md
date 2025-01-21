@@ -3,12 +3,12 @@ IA project
 1. download this dataset if you dont have it
     -[text](https://www.physionet.org/content/vindr-spinexr/1.0.0/#files-panel)
 
-2. when the dataset is avaliable, put in in the corresponding folder. Note that some folders might not be in your project(.cahce, checkpoint...)
+2. when the dataset is avaliable, put in in the corresponding folder. Note that some folders might not be in your project(.cache, checkpoint...)
 notebooks/
 │
 ├── .cache/
 │   └── temp/
-│       └── _preprocessed_dataset.parquet
+│   └── preprocessed_dataset.parquet
 │
 ├── checkpoint/
 ├── dataset/   <===== HERE!
