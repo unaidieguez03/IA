@@ -5,6 +5,10 @@ from io import BytesIO
 import base64
 import os
 from models import Data
+from model import ClassificationModel
+
+
+model = ClassificationModel("../../notebooks/checkpoint/trial_checkpoint.pt")
 
 app = FastAPI(root_path="/python")
 
@@ -26,6 +30,8 @@ async def handle_diagnosis(request: Request):
         # Decode the Base64 image
         decoded_image = base64.b64decode(image_base64)
 
+        Data.disease = model.classify(decoded_image)
+
         # Save the file (optional)
         output_path = os.path.join("uploads", file_name)
         os.makedirs(os.path.dirname(output_path), exist_ok=True)  # Ensure the directory exists
@@ -41,4 +47,4 @@ async def handle_diagnosis(request: Request):
 
 @app.get("/get")
 async def get_disease():
-	return {"patientId": Data.id, "disease": "Fastidiado"}
+	return {"patientId": Data.id, "disease": Data.disease}

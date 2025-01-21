@@ -2,10 +2,9 @@ from iaModelClasses import classification, encoder
 import torch
 from pathlib import Path
 from processImg import grayscaler, normalize_image, resize_image
-class classificationModel:
+class ClassificationModel:
     def __init__(self,save_path: str):
-        self.path=Path(save_path)
-        self.model=self.load_model(save_path)
+        self.model=self.load_model(Path(save_path))
 
     def load_model(path:Path):
         if torch.cuda.is_available():
@@ -60,6 +59,6 @@ class classificationModel:
         image_tensor = image_tensor.unsqueeze(0)
         prediction = self.model(image_tensor)
         probabilities = torch.softmax(prediction, dim=1)
-        predicted_class,_ = get_prediction(probabilities)
+        predicted_class,_ = self.get_prediction(probabilities)
 
         return predicted_class
