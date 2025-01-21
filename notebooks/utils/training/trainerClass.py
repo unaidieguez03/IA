@@ -3,7 +3,7 @@ from .dataloader import LazyFrameDataset
 from .checkpoint import ModelCheckpointer
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from sklearn.model_selection import KFold
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
 import torch.nn as nn
 import torch.optim as optim
