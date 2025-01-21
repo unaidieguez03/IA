@@ -119,7 +119,10 @@ class Trainer():
         kfold = KFold(n_splits=self.n_folds, shuffle=True)
         
         best_fnr = float('inf')
-        best_state = None
+        try:
+            best_state = self.checkpointer.load_best_checkpoint(Path)["best_loss"]
+        except AssertionError as e:
+            best_state = None  # or some default value
         
         for fold, (train_idx, val_idx) in enumerate(kfold.split(self.training_set)):
             print(f'\nFold {fold + 1}/{self.n_folds}')
