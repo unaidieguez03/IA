@@ -16,6 +16,7 @@ class Trainer():
     def __init__(self, 
                  autoencoder, 
                  classifier, 
+                 checkpointer,
                  patience,
                  training_set: LazyFrameDataset,
                  batch_size: int, 
@@ -28,7 +29,7 @@ class Trainer():
         self.batch_size = batch_size
         self.n_folds = n_folds
         
-        self.checkpointer = ModelCheckpointer(save_path=Path("checkpoint/trial_checkpoint.pt"))
+        self.checkpointer = checkpointer
         self.early_stopping = EarlyStopping(patience=patience, min_delta=10, maximize_metric=True)
         self.optimizer = optim.AdamW(self.autoencoder.parameters(), lr=1e-3)
         self.criterion1 = nn.MSELoss()
