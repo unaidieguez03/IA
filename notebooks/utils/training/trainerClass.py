@@ -141,7 +141,7 @@ class Trainer():
                     model=self.classifier,
                     message=f"Model saved. New best FNR: {metrics['train']['fnr']} at fold {fold + 1}, epoch {epoch + 1}",
                 )
-                loss_history.append(metrics)
+                loss_history.append(metrics['train']['fnr'])
             self.autoencoder.eval()
             self.classifier.eval()
             val_fnr = 0
@@ -166,7 +166,7 @@ class Trainer():
             if not self.check_deviation(array=val_metrics, threshold=0.20):
                 self.checkpointer.discard_checkpoint()
                 raise optuna.TrialPruned()
-            self.fnr_history+=loss_history
+            self.fnr_history += loss_history
 
     def free(self) -> None:
         with torch.no_grad():
