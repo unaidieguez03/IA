@@ -141,7 +141,7 @@ class Trainer():
                     model=self.classifier,
                     message=f"Model saved. New best FNR: {metrics['train']['fnr']} at fold {fold + 1}, epoch {epoch + 1}",
                 )
-                loss_history.append(metrics['train']['fnr'])
+                loss_history.append(metrics)
             self.autoencoder.eval()
             self.classifier.eval()
             val_fnr = 0
