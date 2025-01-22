@@ -166,7 +166,7 @@ class Trainer():
             if not self.check_deviation(array=val_metrics, threshold=0.20):
                 self.checkpointer.discard_checkpoint()
                 raise optuna.TrialPruned()
-            self.fnr_history.append(loss_history)
+            self.fnr_history+=loss_history
 
     def free(self) -> None:
         with torch.no_grad():
