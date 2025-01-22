@@ -522,6 +522,8 @@ class Classifier(nn.Module):
 
 # %%
 from utils.training import trainerClass, dataloader
+from utils.training.checkpoint import ModelCheckpointer
+
 @dataclass
 class HyperparameterTuner:
     gc_after_trial: bool
@@ -540,7 +542,7 @@ class HyperparameterTuner:
     compute_device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     def objective(self, trial: Trial) -> float:
         encoder = Encoder()
-        trainer = trainerClass.Trainer(autoencoder=Autoencoder(encoder, Decoder()), classifier=Classifier(num_class, encoder),training_set=dataloader.LazyFrameDataset(lazy_frame=lazy_dataset, dataset_length=LENGTH), batch_size=3, device=device, patience=7, n_folds=3)
+        trainer = trainerClass.Trainer(autoencoder=Autoencoder(encoder, Decoder()), checkpointer=ModelCheckpointer(save_path=Path("checkpoint/trial_checkpoint.pt")),classifier=Classifier(num_class, encoder),training_set=dataloader.LazyFrameDataset(lazy_frame=lazy_dataset, dataset_length=LENGTH), batch_size=3, device=device, patience=7, n_folds=3)
         trainer.train(trial=trial, num_epochs=self.train_epochs)
 
         trial.set_user_attr("checkpoint_path", "checkpoint/trial_checkpoint.pt")
