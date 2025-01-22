@@ -495,7 +495,6 @@ class Classifier(nn.Module):
     def __init__(self, num_classes, encoder):
         super().__init__()
         self.encoder = encoder
-        self.encoder.to(device)
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
         
         # Define classifier with explicit num_classes output
@@ -542,16 +541,15 @@ class HyperparameterTuner:
     compute_device: torch.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     def objective(self, trial: Trial) -> float:
         encoder = Encoder()
-        trainer = trainerClass.Trainer(autoencoder=Autoencoder(encoder, Decoder()), checkpointer=ModelCheckpointer(save_path=Path("checkpoint/trial_checkpoint.pt")),classifier=Classifier(num_class, encoder),training_set=dataloader.LazyFrameDataset(lazy_frame=lazy_dataset, dataset_length=LENGTH), batch_size=3, device=device, patience=7, n_folds=3)
+        trainer = trainerClass.Trainer(autoencoder=Autoencoder(encoder, Decoder()), checkpointer=ModelCheckpointer(save_path=Path(f"checkpoint/trial_{trial.number}_checkpoint.pt")),classifier=Classifier(num_class, encoder),training_set=dataloader.LazyFrameDataset(lazy_frame=lazy_dataset, dataset_length=LENGTH), batch_size=3, device=device, patience=7, n_folds=3)
         trainer.train(trial=trial, num_epochs=self.train_epochs)
 
-        trial.set_user_attr("checkpoint_path", "checkpoint/trial_checkpoint.pt")
-
+        trial.set_user_attr("checkpoint_path", f"checkpoint/trial_{trial.number}_checkpoint.pt")
         # Free resources
         trainer.free()
 
         # Get the best loss achieved
-        best_loss = min(loss_dict["val"]["fnr"] for loss_dict in trainer.loss_history)
+        best_loss = min(loss_dict["val"]["fnr"] for loss_dict in trainer.fnr_history)
 
         return best_loss
     def tune(self) -> Study:
@@ -607,7 +605,7 @@ tuner = HyperparameterTuner(
     n_trials=50,
     timeout=None,
     tuning_direction="minimize",
-    train_epochs=40,
+    train_epochs=50,
     show_progress_bar=True,
     study_load_if_exists=True,
     study_name="backAnalizer",
