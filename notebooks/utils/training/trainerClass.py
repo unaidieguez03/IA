@@ -34,7 +34,8 @@ class Trainer():
         self.optimizer = optim.AdamW(self.autoencoder.parameters(), lr=1e-3)
         self.criterion1 = nn.MSELoss()
         self.criterion2 = nn.BCEWithLogitsLoss()
-        self.loss_history = []
+
+        self.fnr_history = []
         
     def calculate_fnr(self, predictions, labels):
         predictions = (torch.sigmoid(predictions) > 0.5).float()
@@ -51,12 +52,11 @@ class Trainer():
             self.checkpointer.discard_checkpoint()
             raise optuna.TrialPruned()
 
-    def _train_fold(self, train_loader, val_loader) -> dict:
+    def _train_fold(self, train_loader) -> dict:
         self.autoencoder.train()
         self.classifier.train()
         
         train_losses = {'total': 0.0, 'reconstruction': 0.0, 'classification': 0.0, 'fnr': 0.0}
-        val_losses = {'total': 0.0, 'reconstruction': 0.0, 'classification': 0.0, 'fnr': 0.0}
         
         # Training phase
         for data in tqdm(train_loader, desc="Training"):
@@ -82,49 +82,33 @@ class Trainer():
             train_losses['classification'] += classification_loss.item()
             train_losses['fnr'] += fnr
             # print(train_losses)
-        
-        # Validation phase
-        self.autoencoder.eval()
-        self.classifier.eval()
-        with torch.no_grad():
-            for data in val_loader:
-                batch = data["image"].to(self.device)
-                label = data["label"].to(self.device)
-                
-                reconstructed = self.autoencoder(batch)
-                reconstruction_loss = self.criterion1(reconstructed["recontruction"], batch)
-                
-                prediction = self.classifier(batch)
-                # print("3.1", label.shape)
-                classification_loss = self.criterion2(prediction, label)
-                fnr = self.calculate_fnr(prediction, label)
-
-                total_loss = reconstruction_loss + classification_loss
-                
-                val_losses['total'] += total_loss.item()
-                val_losses['reconstruction'] += reconstruction_loss.item()
-                val_losses['classification'] += classification_loss.item()
-                val_losses['fnr'] += fnr
-        
+           
         # Average the losses
         for key in train_losses:
             train_losses[key] /= len(train_loader)
-            val_losses[key] /= len(val_loader)
             
-        return {'train': train_losses, 'val': val_losses}
+        return {'train': train_losses}
+    def check_deviation(self, array, threshold=0.1):
 
+        if not array:  # Manejo de arrays vacíos
+            raise ValueError("El array no puede estar vacío.")
+        
+        promedio = np.mean(array)
+        desviacion = np.std(array)
+        print(promedio, desviacion, desviacion <= threshold * promedio)
+        if promedio == 0:  # Evitar división por cero
+            return False
+        
+        return desviacion <= threshold * promedio
     def train(self, trial: Trial, num_epochs: int) -> None:
         self.autoencoder.to(self.device)
         self.classifier.to(self.device)
         
         kfold = KFold(n_splits=self.n_folds, shuffle=True)
-        
+
         best_fnr = float('inf')
-        try:
-            best_fnr = self.checkpointer.load_best_checkpoint(self.checkpointer._best_checkpoint_path)["best_loss"]
-        except AssertionError as e:
-            print("NO CHECKPOint")
-        
+
+        val_metrics = []
         for fold, (train_idx, val_idx) in enumerate(kfold.split(self.training_set)):
             print(f'\nFold {fold + 1}/{self.n_folds}')
             
@@ -141,42 +125,48 @@ class Trainer():
                 batch_size=self.batch_size,
                 sampler=val_sampler
             )
-            
+            loss_history = []
             for epoch in range(num_epochs):
-                metrics = self._train_fold(train_loader, val_loader)
+                metrics = self._train_fold(train_loader)
                 
                 print(f'Epoch [{epoch+1}/{num_epochs}], Fold [{fold+1}/{self.n_folds}]')
                 print(f'Train - Total Loss: {metrics["train"]["total"]:.4f}, FNR: {metrics["train"]["fnr"]:.4f}')
-                print(f'Val - Total Loss: {metrics["val"]["total"]:.4f}, FNR: {metrics["val"]["fnr"]:.4f}')
                 
-                self._signal_tuner(trial, metrics['train'], epoch)
-                
-                if metrics['train']['fnr'] < best_fnr:
-                    best_fnr = metrics['train']['fnr']
-                    best_state = {
-                        'autoencoder': self.autoencoder.state_dict(),
-                        'classifier': self.classifier.state_dict(),
-                        'fold': fold,
-                        'epoch': epoch
-                    }
-                    self.checkpointer.save_checkpoint(
-                        metric_value=metrics['train']['fnr'],
-                        model=self.classifier,
-                        message=f"Model saved. New best FNR: {best_fnr} at fold {fold + 1}, epoch {epoch + 1}",
-                    )
-                
+                self._signal_tuner(trial=trial, metrics=metrics['train'], epoch=epoch)
                 if self.early_stopping(metrics['train']['fnr']):
                     print(f'Early stopping triggered at epoch {epoch+1}, fold {fold+1}')
                     break
-                print(metrics)
-                self.loss_history.append(metrics)
-        
-        # Load best model state
-        if best_state is not None:
-            self.autoencoder.load_state_dict(best_state['autoencoder'])
-            self.classifier.load_state_dict(best_state['classifier'])
-            print(f"\nBest model from fold {best_state['fold'] + 1}, epoch {best_state['epoch'] + 1}")
-            print(f"Best FNR: {best_fnr:.4f}")
+                self.checkpointer.save_checkpoint(
+                    metric_value=metrics['train']['fnr'],
+                    model=self.classifier,
+                    message=f"Model saved. New best FNR: {metrics['train']['fnr']} at fold {fold + 1}, epoch {epoch + 1}",
+                )
+                loss_history.append(metrics['train']['fnr'])
+            self.autoencoder.eval()
+            self.classifier.eval()
+            val_fnr = 0
+            with torch.no_grad():
+                for data in val_loader:
+                    batch = data["image"].to(self.device)
+                    label = data["label"].to(self.device)
+
+                    reconstructed = self.autoencoder(batch)
+                    reconstruction_loss = self.criterion1(reconstructed["recontruction"], batch)
+                    
+                    prediction = self.classifier(batch)
+
+                    classification_loss = self.criterion2(prediction, label)
+                    fnr = self.calculate_fnr(prediction, label)
+
+                    total_loss = reconstruction_loss + classification_loss
+                    val_fnr += fnr
+
+            val_fnr /= len(val_loader)
+            val_metrics.append(val_fnr)
+            if not self.check_deviation(array=val_metrics, threshold=0.20):
+                self.checkpointer.discard_checkpoint()
+                raise optuna.TrialPruned()
+            self.fnr_history.append(loss_history)
 
     def free(self) -> None:
         with torch.no_grad():
