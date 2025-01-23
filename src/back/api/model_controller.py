@@ -24,13 +24,13 @@ async def predict(uploaded_img) -> Response:
 
 
         # RequestData.disease = "lorem" #get_prediction(output_tensor)[0]
-        app.state.diagnosis_data.id = patient_id
+        _app.state.diagnosis_data.id = patient_id
         raw_img = cv2.imdecode(image_base64, cv2.IMREAD_COLOR)
         predicted,_ =  model.classify(raw_img)
-        app.state.diagnosis_data.disease = predicted
-        app.state.image = image_base64
+        _app.state.diagnosis_data.disease = predicted
+        _app.state.image = image_base64
 
-        app.state.diagnosis_ready = True
+        _app.state.diagnosis_ready = True
 
         # Save the file (optional)
         # output_path = os.path.join("uploads", file_name)
@@ -47,7 +47,7 @@ async def predict(uploaded_img) -> Response:
     
 @_app.get("/get")
 async def simulation() -> Response:
-	return {"patientId": app.state.diagnosis_data.id, "disease": app.state.diagnosis_data.disease}
+	return {"patientId": _app.state.diagnosis_data.id, "disease": _app.state.diagnosis_data.disease}
 
 class RequestData(BaseModel):
 	id: int
