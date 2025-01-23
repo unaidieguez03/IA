@@ -5,7 +5,7 @@ from fastapi import FastAPI, File, Response, UploadFile
 import numpy as np
 from back.model.model import ClassificationModel
 
-_app = FastAPI()
+_app = FastAPI(root_path="/python")
 model = ClassificationModel("notebooks/checkpoint/best_model.pt")
 
 @_app.post("/send")
