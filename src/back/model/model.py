@@ -16,8 +16,8 @@ class ClassificationModel:
         assert Path.exists(path), "No checkpoint found"
         checkpoint = torch.load(path, weights_only=False, map_location=device)
         model = Classifier(num_classes=2, encoder=Encoder())
-        model.load_state_dict(checkpoint["model_state"]) 
-        model.eval()  
+        model.load_state_dict(checkpoint["model_state"])
+        model.eval()
         return model
     def get_prediction(output_tensor: torch.Tensor) -> tuple[str, float]:
 
