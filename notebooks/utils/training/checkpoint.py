@@ -75,7 +75,12 @@ class ModelCheckpointer:
             True if current value is better than best, False otherwise.
         """
         return current > best if self._maximize_metric else current < best
-    
+    def save_best(
+        self,
+        checkpoint,
+    ) -> None:
+
+        torch.save(checkpoint, self._best_checkpoint_path)
     def save_checkpoint(
         self,
         metric_value: float,
