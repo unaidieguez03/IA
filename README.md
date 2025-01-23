@@ -37,6 +37,7 @@ notebooks/
 
 
 INSTALATION
+<<<<<<< HEAD
 dependencies:
 
 $> pip install

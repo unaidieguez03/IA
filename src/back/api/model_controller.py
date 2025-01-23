@@ -49,15 +49,6 @@ async def predict(uploaded_img) -> Response:
 async def simulation() -> Response:
 	return {"patientId": app.state.diagnosis_data.id, "disease": app.state.diagnosis_data.disease}
 
-# @_app.middleware("http")
-# async def log_requests(request, call_next):
-#     logging.debug(f"Request Headers: {request.headers}")
-#     logging.debug(f"Data before: {app.state.diagnosis_data.id} {app.state.diagnosis_data.disease}")
-#     logging.debug(f"Image: {app.state.image}")
-#     response = await call_next(request)
-#     logging.debug(f"Data after: {app.state.diagnosis_data.id} {app.state.diagnosis_data.disease}")
-#     return response
-
 class RequestData(BaseModel):
 	id: int
 	disease: str
