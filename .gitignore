@@ -1,0 +1,10 @@
+dataset/
+dataset_copy/
+__pycache__/
+.cache/
+resouces.zip
+ena/
+_utils/
+build/
+backAnal*
+trial_*
