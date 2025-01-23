@@ -15,13 +15,13 @@ notebooks/
 │
 ├── utils/
 │   ├── training/
-│   │   ├── __init__.py
+│   │   ├── _init__.py
 │   │   ├── autoencoder_trainer.py
 │   │   ├── checkpoint.py
 │   │   ├── dataloader.py
 │   │   ├── early_stopping.py
 │   │
-│   ├── __init__.py
+│   ├── _init__.py
 │   ├── create_parquet.py
 │   ├── image_grayscaler.py
 │   ├── image_normalization.py
@@ -37,7 +37,10 @@ notebooks/
 
 
 INSTALATION
-    install the dependancies
-1. pip install .
-    run the service
-2. back
+install the dependancies
+$>pip install .
+run the service
+$>back
+
+License
+This project is licensed under the AGPLv3+.
