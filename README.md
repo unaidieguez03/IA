@@ -38,8 +38,11 @@ notebooks/
 
 INSTALATION
 dependencies:
-$> pip install .
+
+$> pip install
+
 Once the project is installed just run the mind command in the terminal like this:
+
 $> back
 
 License
