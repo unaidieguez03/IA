@@ -5,8 +5,11 @@ IA project
 
 2. when the dataset is avaliable, put in in the corresponding folder. Note that some folders might not be in your project(.cache, checkpoint...)
 notebooks/
+
 │
+
 ├── .cache/
+
 │   └── temp/
 │   └── preprocessed_dataset.parquet
 │
