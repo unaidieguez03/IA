@@ -34,3 +34,10 @@ notebooks/
 ├── .gitignore
 ├── pyproject.toml
 ├── README.md
+
+
+INSTALATION
+    install the dependancies
+1. pip install .
+    run the service
+2. back
