@@ -15,13 +15,13 @@ notebooks/
 │
 ├── utils/
 │   ├── training/
-│   │   ├── _init__.py
+│   │   ├── __init__.py
 │   │   ├── autoencoder_trainer.py
 │   │   ├── checkpoint.py
 │   │   ├── dataloader.py
 │   │   ├── early_stopping.py
 │   │
-│   ├── _init__.py
+│   ├── __init__.py
 │   ├── create_parquet.py
 │   ├── image_grayscaler.py
 │   ├── image_normalization.py
@@ -37,10 +37,10 @@ notebooks/
 
 
 INSTALATION
-install the dependancies
-$>pip install .
-run the service
-$>back
+dependencies:
+$> pip install .
+Once the project is installed just run the mind command in the terminal like this:
+$> back
 
 License
 This project is licensed under the AGPLv3+.
