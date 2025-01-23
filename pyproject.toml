@@ -8,7 +8,7 @@ name = "backAnalyzer"
 version = "0.1.0"
 description = "IA model to detect back malformations"
 readme = "README.md"
-requires-python = ">= 3.12, <=3.13.1"
+requires-python = ">= 3.11.9, <=3.13.1"
 dependencies = [
     "optuna             ==4.1.0",
     "opencv-python      >=4.10.0",
@@ -20,5 +20,11 @@ dependencies = [
     "typing-extensions  ==4.12.2",
     "matplotlib         >=3.9.0",
     "scikit-learn       ==1.5.1",
-    "ipywidgets         ==8.1.2"
+    "ipywidgets         ==8.1.2",
+    "uvicorn[standard]  ==0.25.0",
+    "fastapi            ==0.105.0",
+    "pydantic           ==2.10.5"
 ]
+
+[project.scripts]
+back = "back:start_server"
