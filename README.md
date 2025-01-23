@@ -34,3 +34,16 @@ notebooks/
 ├── .gitignore
 ├── pyproject.toml
 ├── README.md
+
+
+INSTALATION
+dependencies:
+
+$> pip install
+
+Once the project is installed just run the mind command in the terminal like this:
+
+$> back
+
+License
+This project is licensed under the AGPLv3+.
